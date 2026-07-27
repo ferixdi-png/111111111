@@ -1,4 +1,4 @@
-name: Deploy GitHub Pages
+name: Verify published hello page
 
 on:
   push:
@@ -8,66 +8,41 @@ on:
 
 permissions:
   contents: write
-  pages: write
-  id-token: write
-
-concurrency:
-  group: pages
-  cancel-in-progress: true
 
 jobs:
-  deploy:
+  verify:
     if: github.actor != 'github-actions[bot]'
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Find repositories with Pages already enabled
+      - name: Wait for GitHub Pages rebuild
+        run: sleep 20
+
+      - name: Read Pages configuration
         run: |
           curl -sS -H "Accept: application/vnd.github+json" \
             -H "X-GitHub-Api-Version: 2026-03-10" \
-            "https://api.github.com/users/${{ github.repository_owner }}/repos?per_page=100&type=owner" \
-            | jq -r '.[] | select(.has_pages == true) | .full_name' \
-            > pages-enabled-repos.txt
-          cat pages-enabled-repos.txt
-
-      - name: Try to enable Pages through API
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set +e
-          RESPONSE=$(curl -sS -X POST \
-            -H "Accept: application/vnd.github+json" \
-            -H "Authorization: Bearer $GH_TOKEN" \
-            -H "X-GitHub-Api-Version: 2026-03-10" \
             -w "\nHTTP_STATUS:%{http_code}\n" \
-            "https://api.github.com/repos/${{ github.repository }}/pages" \
-            -d '{"build_type":"workflow"}')
-          printf '%s\n' "$RESPONSE" > pages-api-status.txt
-          cat pages-api-status.txt
+            "https://api.github.com/repos/ferixdi-png/wow/pages" \
+            > wow-pages-info.txt
+          cat wow-pages-info.txt
 
-      - name: Save diagnostic results
+      - name: Check live page
+        run: |
+          curl -sS -L \
+            -o live-page-body.html \
+            -w "HTTP_STATUS:%{http_code}\nFINAL_URL:%{url_effective}\n" \
+            "https://ferixdi-png.github.io/wow/hello/" \
+            > live-page-check.txt
+          grep -o "Привет" live-page-body.html | head -1 >> live-page-check.txt || true
+          cat live-page-check.txt
+
+      - name: Save verification
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add pages-api-status.txt pages-enabled-repos.txt
-          git commit -m "Record Pages diagnostics" || true
+          git add wow-pages-info.txt live-page-check.txt
+          git commit -m "Record live Pages verification" || true
           git push || true
-
-      - name: Enable and configure Pages
-        uses: actions/configure-pages@v5
-        with:
-          enablement: true
-
-      - name: Upload site
-        uses: actions/upload-pages-artifact@v4
-        with:
-          path: .
-
-      - name: Deploy
-        id: deployment
-        uses: actions/deploy-pages@v4
