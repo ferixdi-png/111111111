@@ -1,0 +1,15 @@
+ferixdi-png/12555
+ferixdi-png/34
+ferixdi-png/ai
+ferixdi-png/ai-business-50
+ferixdi-png/ai_avatar
+ferixdi-png/ai_bot
+ferixdi-png/chat
+ferixdi-png/ferixdi-ai-reels
+ferixdi-png/ferixdi_studio
+ferixdi-png/landing
+ferixdi-png/plan
+ferixdi-png/plan_ai_bot
+ferixdi-png/telegram_bot
+ferixdi-png/TRT
+ferixdi-png/wow
