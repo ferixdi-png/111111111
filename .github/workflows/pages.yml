@@ -26,6 +26,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
+      - name: Find repositories with Pages already enabled
+        run: |
+          curl -sS -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2026-03-10" \
+            "https://api.github.com/users/${{ github.repository_owner }}/repos?per_page=100&type=owner" \
+            | jq -r '.[] | select(.has_pages == true) | .full_name' \
+            > pages-enabled-repos.txt
+          cat pages-enabled-repos.txt
+
       - name: Try to enable Pages through API
         env:
           GH_TOKEN: ${{ github.token }}
@@ -41,12 +50,12 @@ jobs:
           printf '%s\n' "$RESPONSE" > pages-api-status.txt
           cat pages-api-status.txt
 
-      - name: Save API result
+      - name: Save diagnostic results
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add pages-api-status.txt
-          git commit -m "Record Pages setup result" || true
+          git add pages-api-status.txt pages-enabled-repos.txt
+          git commit -m "Record Pages diagnostics" || true
           git push || true
 
       - name: Enable and configure Pages
