@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -17,6 +17,7 @@ concurrency:
 
 jobs:
   deploy:
+    if: github.actor != 'github-actions[bot]'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -24,6 +25,29 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+
+      - name: Try to enable Pages through API
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set +e
+          RESPONSE=$(curl -sS -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "X-GitHub-Api-Version: 2026-03-10" \
+            -w "\nHTTP_STATUS:%{http_code}\n" \
+            "https://api.github.com/repos/${{ github.repository }}/pages" \
+            -d '{"build_type":"workflow"}')
+          printf '%s\n' "$RESPONSE" > pages-api-status.txt
+          cat pages-api-status.txt
+
+      - name: Save API result
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add pages-api-status.txt
+          git commit -m "Record Pages setup result" || true
+          git push || true
 
       - name: Enable and configure Pages
         uses: actions/configure-pages@v5
